@@ -1,0 +1,309 @@
+---
+title: "Analiza Mistrzostw Świata w Piłce Nożnej"
+author: "Hubert Gogola"
+date: "2024-12-03"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+# Wprowadzenie
+
+Moja analiza została wykonana na danych opierających się na najwiekszej imprezie w piłce nożnej, czyli Mistrzostw Świata. Postanowiłem podjąć się tego tematu ponieważ piłka nożna to moja pasja która, towarzyszy mi od najmłodszych lat.
+
+W swojej pracy korzystam z danych: <https://www.kaggle.com/datasets/iamsouravbanerjee/fifa-football-world-cup-dataset>
+
+Jest to aktalny zestaw danych, zawierający informacje z wszystkich Mistrzostw Świata w Piłce Nożnej od roku 1930 do 2022 czyli z 22 turniejów.
+
+Dane posiadają następujące kolumny:
+
+-   **YEAR**: Rok turnieju
+
+-   **HOST**: Kraj gospodarza
+
+-   **CHAMPION**: Kraj mistrza
+
+-   **RUNNER UP**: Kraj wicemistrza
+
+-   **THIRD PLACE**: Kraj na trzecim miejscu
+
+-   **TEAMS**: Liczba drużyn uczestniczących
+
+-   **MATCHES PLAYED**: Liczba rozegranych meczów
+
+-   **GOALS SCORED**: Liczba strzelonych bramek
+
+-   **AVG GOALS PER GAME**: Średnia liczba bramek na mecz
+
+# Pakiety z których korzystam:
+
+```{r, message=FALSE, warning=FALSE}
+library(dplyr)
+library(ggplot2)
+library(reshape2)
+library(tidyr)
+library(treemapify)
+library(magrittr)
+library(ggcorrplot)
+```
+
+# Wstępna Analiza
+
+Na początku wczytuje dane z pliku CSV i zapisuje ramke danych w obiekcie dane.
+
+```{r}
+dane <- read.csv("Word Cup.csv", header = TRUE, sep = ",", stringsAsFactors = FALSE)
+
+```
+
+Pogląd pierwszych wierszy danych (przykładowo użyłem 5)
+
+```{r}
+head(dane, 5)
+```
+
+Sprawdzam strukturę danych oraz ich typ w kolumnach, czy są w postaci liczbowych, tekstowych czy logicznych
+
+```{r}
+str(dane)
+```
+
+Wykonuje sumowanie podstawowych danych statystycznych takich jak: minimum, maksimum, mediana, średnia, pierwszy i trzeci kwartyl. Tym sposobem dostarczam ogólnego wglądu w dane czy np. nie występują wartości odstające oraz sprawdzam czy nie brakuje danych.
+
+```{r}
+summary(dane)
+any(is.na(dane))
+```
+
+# Trendy drużyn
+
+Na początku podejmuję się badaniem trendów na mundialu w piłce nożnej. Trendy zmieniają się wraz z ewolucją taktyki, technologii i stylu gry. Podstawowe wizualizacje pozwalają na łatwe dostrzeżenie zmian w kluczowych zmiennych na przestrzeni lat. Najważniejszymi czynnikami nad którymi się skupię w tej tematyce to trend liczby drużyn, rozegranych meczów i bramek oraz zmiana średniej liczby goli na mecz w całej historii imprezy.
+
+### Czy liczba drużyn, meczów i bramek znacząco się zmieniała?
+
+```{r, message=FALSE, warning=FALSE}
+
+ggplot(dane, aes(x = YEAR)) +
+  geom_line(aes(y = TEAMS, color = "Teams"), size = 1) +
+  geom_line(aes(y = MATCHES.PLAYED, color = "Matches Played"), size = 1) +
+  geom_line(aes(y = GOALS.SCORED, color = "Goals Scored"), size = 1) +
+    scale_x_continuous(breaks = seq(1930, 2022, by = 4)) +
+    scale_y_continuous(breaks = seq(0,200, by = 10)) +
+  labs(title = "Trend liczby drużyn, meczów i bramek w Mistrzostwach Świata",
+       x = "Rok",
+       y = "Statystyki liczbowe",
+       color = "Dane") +
+  theme_minimal() + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+Wykres pokazuje, że liczba bramek rosła z czasem, ale wzrost ten nie był tak szybki jak liczba meczów czy drużyn. W ostatnich dekatach liczba bramek się ustabilizowała, co może być wynikiem bardziej defensywnych stylów gry, lepszej organizacji taktycznej i bardziej wyrównanego poziomu drużyn. Mimo wszyszystko można zauważyć, że liczba bramek rosła proporcjonalnie do liczby meczów i drużyn. Analogicznie, oczywiście zwiększenie liczby drużyn prowadziło do zwiększenia liczby rozgrywanych meczów, co wpłyneło również na wydłużenie czasu turnieju oraz zwiększenie ilośći kibiców poprzez dodanie więcej drużyn.
+
+### Czy średnia liczba goli na mecz się również zwiększyła?
+
+```{r, message=FALSE, warning=FALSE}
+ggplot(dane, aes(x = YEAR, y = AVG.GOALS.PER.GAME)) +
+  geom_line(color = "purple", linewidth = 1) +
+  geom_point(color = "purple", size = 2) +
+  scale_x_continuous(breaks = seq(1930,2022, by = 4)) +
+  labs(title = "Średnia liczba goli na mecz (1930-2018)",
+       x = "Rok",
+       y = "Średnia ilośc goli na mecz") +
+  scale_y_continuous(breaks = seq(0,8, by = 0.5)) +
+  theme_minimal() +
+theme(axis.text.x = element_text(angle = 50, hjust = 1))
+
+```
+
+Łatwo można zauważyć wzrost goli, meczów i drużyn. Jednak zadałem sobie pytanie czy jeśli zwiększone zostały te parametry, to czy średnia liczba goli na mecz również się powiększyła? Do tego badania użyję zmiennej AVG GOALS PER GAME czyli inaczej średnia liczba goli na mecz, badam ją na przestrzeni lat. Na tej podstawie zauważam ciekawą zależność. Choć liczba bramek rosła wraz z liczbą meczów, średnia liczba goli na mecz zaczęła się stabilozować w nowoczesnych turniejach. To wskazuje na bardziej defensywną strategię gry współczesnych drużyn. Średnia liczba goli na mecz była najwyższa na mundialu w 1954 roku i wynosiła ona ponad 5 goli. Od lat 60, widoczny jest stopniowy spadek oraz stabilizacja na poziomie około 2,5 gola na mecz. Spadek jest wynikiem większej konkurecnji i lepszej strategii.
+
+# Wyniki poszczególnych drużyn
+
+Analizuję teraz poszczególne drużyny które występowały na największej imprezie w piłce nożnej. Jednym z kluczowych aspektow jest sukces poszczegolnych reprezentacji. Wiadomo że każdy kraj ma inne oczekiwania wobec swojej reprezentacji. Najważniejszy jednak jest wynik i końcowy sukces. Analiza ta pozwoli mi zidentyfikować kraje, które najczęsniej wygrywały ten turniej.
+
+### Które drużyny zdobywały tytuł mistrza świata najwięcej razy?
+
+```{r}
+dane %>%
+  count(CHAMPION) %>%
+  ggplot(aes(x = reorder(CHAMPION, -n), y = n)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  labs(title = "Liczba zwycięstw poszczególnych drużyn",
+       x = "Kraj",
+       y = "Liczba zwycięstw") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+Reprezentacja Brazyli jest liderem w klasyfikacji zwycięstw na tej imprezie zdobywając 5 tytułow mistrzowskich. W czołówce są również takie kraje jak: Włochy, Argentyna, Niemcy czy Francja.
+
+### Jakie zespoły zajęły 2 i 3 miejsce w całej historii turnieju?
+
+```{r}
+
+druzyny_miejsca <- dane %>%
+  select(YEAR, RUNNER.UP, THIRD.PLACE) %>%
+  pivot_longer(cols = c(RUNNER.UP, THIRD.PLACE),
+               names_to = "Pozycja",
+               values_to = "Kraj") %>%
+  count(Kraj, Pozycja)
+
+# Wykres punktowy
+ggplot(druzyny_miejsca, aes(x = n, y = reorder(Kraj, n), color = Pozycja)) +
+  geom_point(size = 5, alpha = 0.7) +
+  geom_text(aes(label = n), hjust = -1, color = "black") +
+  labs(title = "Drużyny zajmujące 2. i 3. miejsce na Mistrzostwach Świata",
+       x = "Liczba wystąpień",
+       y = "Kraj",
+       color = "Pozycja",) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5))
+print(druzyny_miejsca)
+```
+
+Wykres punktowy czyli Dolt Plot jest dobrym sposobem na wizualizacje częstości wystąpień, gdzie każda drużyna zajmująca 2 lub 3 miejsce jest reprezentowana przez punkty ułożone na osi poziomej. Czerwona Kropka - 2 miejsce w trunieju. Niebieska Kropka - 3 miejsce w turnieju. Polska zdobyła dwa razy w swojej historii trzecie miejsce na mistrzostwach.
+
+# Analiza sukcesów gospodarzy
+
+Gospodarze mistrzostw świata często mają przewagę wynikającą z gry u siebie z powodu np. znajomości stadionów, wsparcia kibiców czy braku konieczności podróży. Te czynniki mogą wpływać na ich rezultaty. W tej analizie skupiam się na porównaniu liczby bramek zdobytych przez drużyny gospodarzy, które wygrały turniej, z liczbą bramek innych drużyn. Wykorzyste wizualizację w postaci wykresu pudełkowego, aby zrozumieć różnice w rozkładzie wyników. Niemcy, Argentyna czy Holandia ewidentnie dominują w tym rankingu i często dochodzą do finałów. To pokazuje ich siłe i stabilność.
+
+### Czy często gospodarze odnoszą sukces na mundialu?
+
+```{r}
+sukcesy_gospodarzy <- dane %>%
+  mutate(Sukces = ifelse(HOST == CHAMPION, "Mistrz",
+                  ifelse(HOST == RUNNER.UP, "Wicemistrz",
+                  ifelse(HOST == THIRD.PLACE, "3. Miejsce", 
+                         "Brak sukcesu")))) %>%
+  count(Sukces)
+
+sukcesy_gospodarzy <- sukcesy_gospodarzy %>%
+  mutate(Procent = n / sum(n) * 100)
+
+ggplot(sukcesy_gospodarzy, aes(x = "", y = Procent, fill = Sukces)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar(theta = "y") +
+  geom_text(aes(label = paste0(round(Procent, 1), "%")), 
+            position = position_stack(vjust = 0.5)) +
+  labs(title = "Sukcesy gospodarzy Mistrzostw Świata",
+       fill = "Statystyki: ",
+       x = NULL, y = NULL) +
+  theme_void() +
+  theme(legend.position = "bottom")
+print(sukcesy_gospodarzy)
+```
+
+Występuje zależność pomiędzy sukcesem na mistrzostwach swiata a bycie gospodarzem tego turnieju. Gospodarze wygrywali w około 27% przypadkach czyli w 6 na 22 turniejów. Wicemistrzami byli około 9% razy a 3 miejsce zajmowali ponad 13%. Pomimo przewagi własnego boiska, gospodarze często też kończyli turniej bez medalu. Jednak trzeba pamiętać, że w wielu przypadkach były to drużyny o słabych wynikach np. RPA, Rosja czy ostatnie mistrzostwa świata w Katarze. Warto podkreślić, że historia pokazuje pewną przewagę gospodarzy w porównaniu z innymi drużynami.
+
+### Czy gospodarze mistrzostw świata w piłce nożnej zdobywają średnio więcej goli na mecz niż drużyny, które nie są gospodarzami?
+
+```{r}
+
+dane_gole <- dane %>%
+  mutate(Gospodarz = ifelse(HOST == CHAMPION | HOST == RUNNER.UP | HOST == THIRD.PLACE, "Gospodarz", "Goście"))
+
+t_test_gole <- t.test(AVG.GOALS.PER.GAME ~ Gospodarz, data = dane_gole, alternative = "greater")
+print(t_test_gole)
+
+ggplot(dane_gole, aes(x = Gospodarz, y = AVG.GOALS.PER.GAME, fill = Gospodarz)) +
+  geom_boxplot(outlier.color = "red", outlier.shape = 8) +
+  stat_summary(fun = mean, geom = "point", shape = 23, size = 4, fill = "yellow") +
+  geom_jitter(width = 0.2, alpha = 0.5, color = "black") + 
+  scale_y_continuous(breaks = seq(1, 6, by = 0.5)) +
+  labs(title = "Porównanie średniej liczby goli na mecz: Gospodarze vs Goście ",
+       x = "Rodzaj drużyny",
+       y = "Średnia liczba goli na mecz") +
+  theme_minimal() +
+  theme(legend.position = "none", plot.title = element_text(hjust = 0.5)) +
+  annotate("text", x = 1.5, y = max(dane_gole$AVG.GOALS.PER.GAME), 
+           label = paste0("p = ", round(t_test_gole$p.value, 3)), color = "blue", size = 5)
+
+
+```
+
+W obu grupach gospodarzy jak i gości, średnia liczba goli jest zaznaczona jako zółty punkt. Wartość p-value informuje o wyniku testu t-Studenta, co pozwala na wizualne wsparcie interpretacji statystycznej. Wartość p \> 0.05, co oznacza brak podstaw do odrzucenia hipotezy zerowej. Linia w środku pudełka jest medianą możemy na tej podstawie wysnioskować że gospodarze mają ją wyższą niż pozostałe drużyny. Gospodarze mają zarówno przypadki z bardzo wysoką liczbą goli, jak i z niższą. Z kolei rozkład dla gości jest bardziej skupiony, ze średnią liczbą goli na poziomie 2.5-3.0. Jest to bardziej jednorodna grupa pod względem liczby goli strzelonych na mecz. Gospodarze mistrzostw świata nie mają wyraźnej przewagi w kontekście skuteczności strzeleckiej na przestrzeni lat.
+
+# Analiza poszczególnych kontynentów na mistrzostwach świata
+
+Analiza udziału kontynentów pozwala odpowiedzieć na pytania dotyczące ich wkładu w historię turnieju, a także ocenić, które regiony dominowały w określonych epokach piłki nożnej. Trzeba przyznać, że różnorodność kontyntnów przynosi świetny klimat dla takiej imprezy.
+
+### Który kontynent najczęściej organizuje mundial?
+
+```{r}
+
+wc_summ <- data.frame(
+  Gospodarz = c(rep("Europa", 10), rep("Ameryka Południowa", 5), rep("Ameryka Połnocna", 3), rep("Asia", 3), "Afryka")
+)
+
+table <- wc_summ %>% count(Gospodarz)
+table <- table %>% arrange(desc(n))
+
+ggplot(table, aes(x = "", y = n, fill = Gospodarz)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar(theta = "y") +
+  labs(title = "Gospodarz mistrzostw świata według kontynentów", x = NULL, y = NULL) +
+  geom_text(aes(label = scales::percent(n / sum(n), accuracy = 0.01)), position = position_stack(vjust = 0.5)) +
+  theme_void()
+
+```
+
+Z poniższego wykresu kołowego zauważamy znaczącą zależność gospodarza kontynentu mistrzostw świata. Europa jest najczęstrzym wyborem organizacji tej imprezy 10 turniejów ponad 45%. Ameryka Południowa jest drugim najczęstrzym wyborem. Ameryka Północna i Azja mialy po 3 edycje tej imprezy. Afryka była tylko raz gospodarzem (turniej odbył się w RPA w 2010 roku).
+
+### Które kontynenty wygrywały mistrzostwa świata i ile razy?
+
+```{r}
+world_cup_data <- data.frame(
+  YEAR = c(1930, 1934, 1938, 1950, 1954, 1958, 1962, 1966, 1970, 1974, 1978, 1982, 1986, 1990, 1994, 1998, 2002, 2006, 2010, 2014, 2018, 2022),
+  CHAMPION = c("Uruguay", "Italy", "Italy", "Uruguay", "West Germany", "Brazil", "Brazil", "England", "Brazil", "West Germany", "Argentina", "Italy", "Argentina", "West Germany", "Brazil", "France", "Brazil", "Italy", "Spain", "Germany", "France", "Argentina")
+)
+
+continent_mapping <- data.frame(
+  team = c("Uruguay", "Argentina", "Brazil", "Italy", "West Germany", "Germany", "England", "France", "Spain"),
+  continent = c("Ameryka Południowa", "Ameryka Południowa", "Ameryka Południowa", "Europa", "Europa", "Europa", "Europa", "Europa", "Europa")
+)
+
+world_cup_data <- world_cup_data %>%
+  mutate(continent = continent_mapping$continent[match(CHAMPION, continent_mapping$team)])
+
+continent_counts <- world_cup_data %>% 
+  group_by(continent) %>% 
+  tally(name = "titles") %>% 
+  arrange(desc(titles))
+
+ggplot(continent_counts, aes(x = reorder(continent, -titles), y = titles, fill = continent)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  scale_y_continuous(breaks = seq(1, 14, by = 1)) +
+  labs(title = "Liczba tytułow mistrzostw świata dla poszczególnych kontynentów",
+       x = "Kontynent",
+       y = "Liczba tytułów")
+
+```
+
+Europa dominuje w liczbie tytyłow. Kontynent ten triumfował 12 razy. Ameryka Południowa również znacząco nie odstaje i posiada 10 wygranych turniejów. Mimo wszystko te dwa kontynenty tylko wygrywały mistrzostwa. Żadnej drużynie z Ameryki Północnej, Azji czy Afryki nie udało się zdobyć wymarzonego pucharu. Pokazuje też to, że od początku dziejów piłki nożnej w tym temacie nic się nie zmieniło i dominują tylko dwa kontynenty.
+
+# Heatmapa - korelacja danych
+
+Korelacja mierzy stopień, w jakim dwie zmienne są ze sobą powiązane. W kontekście turnieju mistrzostw świata, badanie korelacji między takimi danymi, jak liczba drużyn, liczba rozegranych meczów, liczba strzelonych goli czy średnia liczba goli na mecz, pozwala na wyciąganie wniosków o zależnościach między różnymi aspektami rywalizacji.
+
+### Jakie występują zależności dla innych statystyk?
+
+```{r}
+cor_matrix <- cor(dane[, sapply(dane, is.numeric)], use = "complete.obs")
+
+ggcorrplot(cor_matrix, 
+           hc.order = TRUE, 
+           type = "lower", 
+           lab = TRUE, 
+           colors = c("red", "white", "blue"),
+           title = "Heatmapa kolumn korelacji",
+           tl.cex = 10)
+
+```
+
+Istnieje bardzo silna dodatnia korelacja między rokiem a liczbą rozegranych meczów, co sugeruje, że liczba meczów w turnieju stopniowo rosła z biegiem lat. Możemy wprost powiedzieć, że istnieje bardzo wysoka zależność miedzy rokiem a rozegranymi spotkaniami. Silna korelacja wystepuje również dla zmiennych roku i drużyn, co wskazuje że, z biegiem lat zwiększyła się liczba drużyn w turnieju. Słaba ujemna koleracja wysępuje w ilości średnich bramek na mecz a rokiem. Z biegiem lat średnia liczba goli na mecz malała (mała zmienność na przestrzeni ostatnich lat).
+
+## Zakończenie
+
+Przeprowadzona analiza pokazała, że mistrzostwa świata w piłce nożnej nie tylko stanowią ważne wydarzenie sportowe, ale również dostarczają bogatego materiału do analiz statystycznych, które pozwalają na zrozumienie, jak zmieniały się kluczowe aspekty tego turnieju na przestrzeni lat. Wyniki tej analizy mogą stanowić punkt wyjścia do dalszych badań i analiz, np. w kontekście wpływu konkretnych drużyn na wyniki mistrzostw, czy wpływu organizacji turnieju na wyniki drużyn. Warto zauważyć, że pokazana analiza przedstawia również trendy w piłce nożnej które pokazują zmiane strategi drużyn czy wzrost intensywności.

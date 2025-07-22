@@ -1,4 +1,4 @@
-"# Analiza-Mundialu" 
+# Analiza-Mundialu
 
 **Autor:** Hubert Gogola  
 **Data:** 03.12.2024  
